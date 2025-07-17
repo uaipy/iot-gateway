@@ -1,0 +1,59 @@
+services:
+  # Serviço do banco de dados PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-sensor_data}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Serviço da API FastAPI
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_gateway
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      # Variáveis de ambiente para a aplicação
+      DB_NAME: ${DB_NAME:-sensor_data}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_HOST: db
+      DB_PORT: 5432
+      CLOUD_API_URL: ${CLOUD_API_URL}
+      SEND_INTERVAL_SECONDS: ${SEND_INTERVAL_SECONDS:-300}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Serviço opcional para gerenciar o banco de dados
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gateway.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
