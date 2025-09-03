@@ -97,21 +97,8 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./config/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./config/loki:/etc/loki:ro 
       - loki-data:/loki
-    restart: unless-stopped
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    container_name: promtail
-    command: -config.file=/etc/promtail/config.yaml
-    volumes:
-      - ./config/promtail-config.yaml:/etc/promtail/config.yaml:ro
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /etc/machine-id:/etc/machine-id:ro
-    depends_on:
-      - loki
     restart: unless-stopped
 
 volumes:
