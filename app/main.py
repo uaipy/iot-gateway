@@ -38,25 +38,65 @@ cloud_sender = CloudSender(CLOUD_API_URL)
 # Sincronização de threads
 db_lock = Lock()
 
-# Definição dos modelos Pydantic
+# Definição dos modelos Pydantic - Novo contrato
+class ActorReading(BaseModel):
+    actor_name: str
+    value: float
+    unit_of_measurement: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+class ActorDataPayload(BaseModel):
+    serialNumber: str
+    readings: List[ActorReading]
+
+# Modelos legados mantidos para compatibilidade (deprecated)
 class SensorReading(BaseModel):
     sensor_name_or_id: str
     value: float
-    unit_of_measurement: Optional[str]
+    unit_of_measurement: Optional[str] = None
     timestamp: Optional[datetime] = None
 
 class DevicePayload(BaseModel):
     device_serial_number: str
     readings: List[SensorReading]
 
-# Endpoint da API para receber dados dos dispositivos ESP8266/Arduino
+# Endpoint da API para receber dados dos dispositivos - Novo contrato
+@app.post("/actor-data")
+async def receive_actor_data(payload: ActorDataPayload):
+    """
+    Recebe dados no novo formato (serialNumber, actor_name), armazena no banco local 
+    e tenta enviar imediatamente para a nuvem.
+    """
+    print(f"Recebendo dados do dispositivo {payload.serialNumber}")
+    with db_lock:
+        # 1. Armazena os dados no banco de dados local imediatamente
+        for reading in payload.readings:
+            # Define o timestamp se não for fornecido
+            if not reading.timestamp:
+                reading.timestamp = datetime.now(timezone.utc)
+            
+            # Converte o novo formato para o formato interno do banco
+            db_manager.insert_reading(
+                payload.serialNumber,  # serialNumber -> device_serial_number (interno)
+                reading.actor_name,    # actor_name -> sensor_name_or_id (interno)
+                reading.value,
+                reading.unit_of_measurement,
+                reading.timestamp
+            )
+        
+        # 2. Tenta enviar todos os dados não enviados, incluindo os recém-recebidos
+        cloud_sender.retry_send(db_manager, payload.serialNumber)
+        
+    return {"status": "success", "message": "Dados recebidos, armazenados e envio para a nuvem iniciado."}
+
+# Endpoint legado mantido para compatibilidade (deprecated)
 @app.post("/readings")
 async def receive_readings(payload: DevicePayload):
     """
-    Recebe dados, armazena no banco local e tenta enviar imediatamente
-    para a nuvem.
+    [DEPRECATED] Recebe dados no formato antigo. Use /actor-data com o novo formato.
+    Recebe dados, armazena no banco local e tenta enviar imediatamente para a nuvem.
     """
-    print(payload)
+    print(f"[DEPRECATED] Recebendo dados do dispositivo {payload.device_serial_number}")
     with db_lock:
         # 1. Armazena os dados no banco de dados local imediatamente
         for reading in payload.readings:

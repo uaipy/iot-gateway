@@ -194,27 +194,27 @@ docker-compose down -v
 
 ## 📡 Enviando Dados para a API
 
-### Formato de Requisição
+### Novo Formato (Recomendado)
 
-A API espera receber dados no seguinte formato:
+A API aceita dados no novo formato alinhado com o contrato da cloud:
 
-**Endpoint**: `POST http://localhost:8000/readings`
+**Endpoint**: `POST http://localhost:8000/actor-data`
 
 **Content-Type**: `application/json`
 
 **Body**:
 ```json
 {
-  "device_serial_number": "ESP8266-001",
+  "serialNumber": "ESP8266-001",
   "readings": [
     {
-      "sensor_name_or_id": "temperature",
+      "actor_name": "temperature",
       "value": 26.5,
       "unit_of_measurement": "°C",
       "timestamp": "2024-01-15T10:30:00Z"
     },
     {
-      "sensor_name_or_id": "humidity",
+      "actor_name": "humidity",
       "value": 55.2,
       "unit_of_measurement": "%",
       "timestamp": "2024-01-15T10:30:00Z"
@@ -225,21 +225,21 @@ A API espera receber dados no seguinte formato:
 
 **Nota**: O campo `timestamp` é opcional. Se não for fornecido, será usado o timestamp atual.
 
-### Exemplo com cURL
+### Exemplo com cURL (Novo Formato)
 
 ```bash
-curl -X POST "http://localhost:8000/readings" \
+curl -X POST "http://localhost:8000/actor-data" \
   -H "Content-Type: application/json" \
   -d '{
-    "device_serial_number": "ESP8266-001",
+    "serialNumber": "ESP8266-001",
     "readings": [
       {
-        "sensor_name_or_id": "temperature",
+        "actor_name": "temperature",
         "value": 26.5,
         "unit_of_measurement": "°C"
       },
       {
-        "sensor_name_or_id": "humidity",
+        "actor_name": "humidity",
         "value": 55.2,
         "unit_of_measurement": "%"
       }
@@ -247,22 +247,22 @@ curl -X POST "http://localhost:8000/readings" \
   }'
 ```
 
-### Exemplo com Python
+### Exemplo com Python (Novo Formato)
 
 ```python
 import requests
 
-url = "http://localhost:8000/readings"
+url = "http://localhost:8000/actor-data"
 payload = {
-    "device_serial_number": "ESP8266-001",
+    "serialNumber": "ESP8266-001",
     "readings": [
         {
-            "sensor_name_or_id": "temperature",
+            "actor_name": "temperature",
             "value": 26.5,
             "unit_of_measurement": "°C"
         },
         {
-            "sensor_name_or_id": "humidity",
+            "actor_name": "humidity",
             "value": 55.2,
             "unit_of_measurement": "%"
         }
@@ -271,6 +271,28 @@ payload = {
 
 response = requests.post(url, json=payload)
 print(response.json())
+```
+
+---
+
+### Formato Legado (Deprecated)
+
+O endpoint `/readings` ainda está disponível para compatibilidade, mas está **deprecated**. Use `/actor-data` com o novo formato.
+
+**Endpoint**: `POST http://localhost:8000/readings`
+
+**Body**:
+```json
+{
+  "device_serial_number": "ESP8266-001",
+  "readings": [
+    {
+      "sensor_name_or_id": "temperature",
+      "value": 26.5,
+      "unit_of_measurement": "°C"
+    }
+  ]
+}
 ```
 
 ---
