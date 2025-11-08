@@ -4,7 +4,12 @@ import time
 
 class CloudSender:
     def __init__(self, api_url):
-        self.api_url = api_url
+        # Garante que a URL termina com /actor-data
+        if not api_url.endswith('/actor-data'):
+            # Remove barra final se existir e adiciona /actor-data
+            self.api_url = api_url.rstrip('/') + '/actor-data'
+        else:
+            self.api_url = api_url
 
     def send_data(self, payload):
         """Tenta enviar os dados para a API da nuvem."""
@@ -41,15 +46,16 @@ class CloudSender:
             reading_id, device_serial, sensor_name, value, unit, timestamp, _ = row
             if device_serial not in readings_by_device:
                 readings_by_device[device_serial] = {
-                    "device_serial_number": device_serial,
+                    "serialNumber": device_serial,
                     "readings": [],
                     "ids": []  # Apenas para controle interno
                 }
 
-            formatted_timestamp = timestamp.isoformat().replace('+00:00', 'Z')
+            # Formata o timestamp para ISO 8601 com Z no final
+            formatted_timestamp = timestamp.isoformat().replace('+00:00', 'Z') if timestamp else None
 
             readings_by_device[device_serial]["readings"].append({
-                "sensor_name_or_id": sensor_name,
+                "actor_name": sensor_name,
                 "value": float(value),
                 "unit_of_measurement": unit,
                 "timestamp": formatted_timestamp

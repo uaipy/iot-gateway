@@ -5,6 +5,10 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Optional
+from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente do arquivo .env (se existir)
+load_dotenv()
 
 from app.cloud_sender import CloudSender
 from app.database_manager import DatabaseManager
@@ -17,7 +21,7 @@ DB_CONFIG = {
     "host": os.getenv("DB_HOST", "db"), # Ajustado para o nome do serviço no Docker Compose
     "port": os.getenv("DB_PORT", "5432")
 }
-CLOUD_API_URL = os.getenv("CLOUD_API_URL", "http://sua-api-na-nuvem.com/api/readings")
+CLOUD_API_URL = os.getenv("CLOUD_API_URL", "http://sua-api-na-nuvem.com/api")
 # Intervalo do scheduler em segundos (5 minutos por padrão)
 SEND_INTERVAL_SECONDS = int(os.getenv("SEND_INTERVAL_SECONDS", "300")) 
 
