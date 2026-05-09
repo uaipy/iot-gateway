@@ -81,3 +81,10 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# K6 — artefatos gerados (run-all.sh / --summary-export)
+k6/results/
+
+# Permitir k6/lib apesar do ignore genérico `lib/` acima
+!/k6/lib/
+!/k6/lib/**

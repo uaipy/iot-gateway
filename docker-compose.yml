@@ -18,6 +18,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Mock HTTP para CLOUD_API_URL (httpbin): sync rápido e determinístico nos testes de carga.
+  # CLOUD_API_URL base sem /actor-data → CloudSender usa .../anything/actor-data (POST aceito pelo httpbin).
+  cloud-mock:
+    image: kennethreitz/httpbin:latest
+    container_name: cloud_mock
+    ports:
+      - "8888:80"
+    restart: unless-stopped
+
   # Serviço da API FastAPI
   app:
     build:
@@ -36,11 +45,13 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_HOST: db
       DB_PORT: 5432
-      CLOUD_API_URL: ${CLOUD_API_URL}
+      CLOUD_API_URL: ${CLOUD_API_URL:-http://cloud-mock/anything}
       SEND_INTERVAL_SECONDS: ${SEND_INTERVAL_SECONDS:-300}
     depends_on:
       db:
         condition: service_healthy
+      cloud-mock:
+        condition: service_started
 
   grafana:
     image: docker.io/grafana/grafana-oss:12.1.1
@@ -51,19 +62,23 @@ services:
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
 
-  # prometheus:
-  #   image: docker.io/prom/prometheus:v3.5.0
-  #   container_name: prometheus
-  #   command:
-  #     - --config.file=/etc/prometheus/prometheus.yaml
-  #     - --storage.tsdb.retention.time=7d
-  #     - --storage.tsdb.retention.size=2GB
-  #   ports:
-  #     - 9090:9090
-  #   volumes:
-  #     - ./config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
-  #     - prometheus-data:/prometheus
-  #   restart: unless-stopped
+  prometheus:
+    image: docker.io/prom/prometheus:v3.5.0
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=2GB
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    depends_on:
+      - cadvisor
+      - node_exporter
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.52.1
@@ -105,7 +120,7 @@ volumes:
   postgres_data:
   grafana-data:
     driver: local
-  # prometheus-data:
-  #   driver: local
+  prometheus-data:
+    driver: local
   loki-data:
     driver: local
