@@ -3,8 +3,7 @@
 #
 # Pré-requisitos:
 #   - k6 instalado (https://k6.io/)
-#   - Stack Docker com app + db + cloud-mock: docker compose up -d
-#   - CLOUD_API_URL no compose aponta para http://cloud-mock/anything (padrão)
+#   - Stack Docker: docker compose up -d (defina CLOUD_API_URL no .env ou no ambiente)
 #
 # Variáveis opcionais:
 #   REPS_LOAD=5       — repetições de load.js

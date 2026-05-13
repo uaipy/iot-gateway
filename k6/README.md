@@ -8,7 +8,7 @@ Este diretório contém os cenários de carga para o endpoint **`POST /actor-dat
 
 | Ferramenta | Uso |
 |------------|-----|
-| **Docker** e **Docker Compose** | Subir PostgreSQL, API, mock da nuvem, Prometheus, etc. |
+| **Docker** e **Docker Compose** | Subir PostgreSQL, API, Prometheus, etc. |
 | **K6** | Executar os scripts `.js` |
 
 Instalação do K6: [https://k6.io/docs/getting-started/installation/](https://k6.io/docs/getting-started/installation/)
@@ -23,7 +23,15 @@ k6 version
 
 ## Subir o projeto (stack local)
 
-Na **raiz do repositório** (`iot-gateway/`):
+Na **raiz do repositório** (`iot-gateway/`), defina a URL da API na nuvem (o gateway chama essa URL em cada ingestão). Crie ou edite um ficheiro **`.env`** na raiz (não versionado) com pelo menos:
+
+```bash
+CLOUD_API_URL=https://seu-servidor.exemplo/api
+```
+
+O `CloudSender` acrescenta `/actor-data` ao URL base se ainda não terminar com esse caminho — veja [`app/cloud_sender.py`](../app/cloud_sender.py).
+
+Depois:
 
 ```bash
 docker compose up -d --build
@@ -35,7 +43,6 @@ Serviços relevantes para os testes:
 |---------|----------------|--------|
 | **app** (FastAPI) | **8000** | Gateway — alvo dos testes K6 (`BASE_URL`) |
 | **db** (PostgreSQL) | 5432 | Persistência das leituras |
-| **cloud-mock** (httpbin) | **8888** → 80 interno | Simula a API na nuvem com resposta rápida e determinística |
 | **Prometheus** | 9090 | Métricas (correlação com janelas de teste) |
 | **Grafana** | 3000 | Visualização (adicione o Prometheus como data source) |
 | **cAdvisor** | 8080 | Métricas de containers |
@@ -45,17 +52,12 @@ Documentação interativa da API: [http://localhost:8000/docs](http://localhost:
 
 ---
 
-## Por que existe o `cloud-mock`
+## Sincronização com a nuvem (`CLOUD_API_URL`)
 
-O gateway, ao receber dados em `/actor-data`, tenta sincronizar com a nuvem **no mesmo ciclo da requisição** (`retry_send`). Para testes reproduzíveis e isolados da internet, o Compose define por padrão:
+Em cada **`POST /actor-data`**, o gateway grava no PostgreSQL e tenta enviar dados pendentes para a nuvem **no mesmo pedido HTTP** (latência do K6 inclui essa chamada, até timeout de 10 s no cliente HTTP do Python).
 
-```text
-CLOUD_API_URL=http://cloud-mock/anything
-```
-
-O código da aplicação normaliza essa URL para um endpoint que o httpbin aceita em POST (por exemplo `.../anything/actor-data`). Assim, o tempo medido pelo K6 reflete ingestão + banco + chamada HTTP local à “nuvem”, sem dependência de rede externa.
-
-Se precisar apontar para outra URL, use variável de ambiente ao subir o Compose ou um ficheiro `.env` na raiz do projeto (conforme [README principal](../README.md)).
+- **Docker Compose**: a variável **`CLOUD_API_URL`** deve vir do `.env` ou do ambiente do shell (`export CLOUD_API_URL=...`) antes de `docker compose up`. Não há valor por defeito no Compose — sem isso o contentor pode falhar ao arrancar ou a aplicação pode usar URL vazia/inválida.
+- Documentação geral do projeto: [README principal](../README.md).
 
 ---
 
@@ -176,7 +178,8 @@ k6/
 | Sintoma | O que verificar |
 |---------|-----------------|
 | `connection refused` em `localhost:8000` | `docker compose ps` — o serviço `app` deve estar `running`. Volte a subir: `docker compose up -d`. |
-| Falhas HTTP 5xx ou timeouts sob carga | CPU/RAM do host, Postgres lento, ou thresholds do K6 demasiado apertados para o seu hardware. |
+| Falhas HTTP 5xx ou timeouts sob carga | CPU/RAM do host, Postgres lento, servidor na nuvem lento ou indisponível, ou thresholds do K6 demasiado apertados. |
+| Latências muito altas no K6 | Esperado se `CLOUD_API_URL` aponta para um servidor remoto: cada `/actor-data` inclui o POST para a nuvem. |
 | Thresholds do K6 vermelhos em **smoke** com API parada | Esperado: o smoke falha se o gateway não estiver a ouvir na `BASE_URL`. |
 | Import `./lib/payloads.js` falha | Execute `k6 run` a partir da **raiz do repo** com caminho `k6/nome.js`, não dentro de `k6/` com `k6 run smoke.js` sem ajustar caminhos. |
 
@@ -184,4 +187,4 @@ k6/
 
 ## Execução sem Docker (opcional)
 
-Pode correr a API com Python e PostgreSQL locais conforme o [README principal](../README.md). Nesse caso, use `DB_HOST=localhost` e assegure que `CLOUD_API_URL` aponta para um endpoint que responda ao POST (por exemplo um httpbin local na porta 8888). Os comandos K6 mantêm-se os mesmos, desde que `BASE_URL` corresponda ao Uvicorn (por defeito porta **8000**).
+Pode correr a API com Python e PostgreSQL locais conforme o [README principal](../README.md). Defina `CLOUD_API_URL` e `DB_HOST=localhost` conforme necessário. Os comandos K6 mantêm-se os mesmos, desde que `BASE_URL` corresponda ao Uvicorn (por defeito porta **8000**).

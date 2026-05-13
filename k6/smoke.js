@@ -3,7 +3,7 @@
  *
  * Pré-requisitos:
  *   - API em BASE_URL (default http://localhost:8000)
- *   - Docker: CLOUD_API_URL apontando para cloud-mock (docker-compose define http://cloud-mock/anything)
+ *   - Gateway com CLOUD_API_URL configurada (ex.: .env na raiz do repo) se usar Docker
  *
  * Execução:
  *   k6 run k6/smoke.js
