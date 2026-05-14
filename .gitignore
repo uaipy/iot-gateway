@@ -20,11 +20,10 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtualenv
+# Virtualenv (não use pasta `env/` para venv: existe `env/` com perfis TV box versionados.)
 .venv/
 venv/
 ENV/
-env/
 .env
 .venv
 pip-selfcheck.json
